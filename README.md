@@ -1,7 +1,7 @@
 # LatencyMon
 Dead-Simple TCP Full Round-Trip Measurement.
 
-It combines both server and clients and produces a simple CSV format suitable for further processing. 
+It combines both server and clients in one tool and produces a simple CSV format suitable for further processing. 
 
 ## Output Format Description
 ### Syntax
