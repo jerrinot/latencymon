@@ -12,18 +12,51 @@ import (
 
 const DEFAULT_PORT = 3540
 const DEFAULT_INTERVAL = 1000
+const DEFAULT_MODE = "hybrid"
+const DEFAULT_BACKLOG = 1000
 
 func main() {
 	hostArgument := flag.String("s", "localhost", "comma separated list of servers to connect to")
 	port := flag.Int("p", DEFAULT_PORT, "tcp port to use")
 	interval := flag.Int("i", DEFAULT_INTERVAL, "interval in ms")
+	mode := flag.String("m", DEFAULT_MODE, "Operation mode: {hybrid|server|client}")
 	flag.Parse()
 
-	server.StartServer(*port)
-	hosts := strings.Split(*hostArgument, ",")
+	switch *mode {
+	case "hybrid", "client", "server":
+	default:
+		fmt.Printf("Unknown mode '%s'. Valid modes: hybrid|server|client\n", *mode)
+		return
+	}
 
-	chans  := startClients(hosts, *port)
-	measure(chans, *interval)
+	if (*mode != "client") {
+		server.StartServer(*port)
+	}
+
+	if (*mode != "server") {
+		hosts := strings.Split(*hostArgument, ",")
+		clientChans := startClients(hosts, *port)
+		timerChan := startTimer(*interval, DEFAULT_BACKLOG)
+		go startMeasuring(clientChans, timerChan)
+	}
+
+	sleepIndefinitely()
+}
+
+
+func sleepIndefinitely() {
+	select{}
+}
+
+func startTimer(rateMs int, backlog int) chan int {
+	chn := make(chan int, backlog)
+	go func() {
+		for i := 0; ; i++ {
+			chn <- i
+			time.Sleep(time.Duration(rateMs) * time.Millisecond)
+		}
+	}()
+	return chn
 }
 
 func startClients(hosts []string, port int) []chan int {
@@ -42,12 +75,12 @@ func startClients(hosts []string, port int) []chan int {
 	return chans
 }
 
-func measure(chans []chan int, interval int) {
+func startMeasuring(clientChans []chan int, timerChan chan int) {
 	for {
-		time.Sleep(time.Duration(interval) * time.Millisecond)
+		<- timerChan
 		var csv string
 		sep := ""
-		for _, latChan := range chans {
+		for _, latChan := range clientChans {
 			csv += sep
 			latency := <- latChan
 			csv += strconv.Itoa(latency)
