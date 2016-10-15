@@ -33,8 +33,10 @@ func startClients(hosts []string, port int) []chan int {
 		csvFormat += ", "
 		chans[i] = make(chan int)
 		csvFormat += host
-		address := fmt.Sprintf("%s:%d", host, port)
-		go client.Measure(address, chans[i])
+		if strings.Index(host, ":") == -1 {
+			host = fmt.Sprintf("%s:%d", host, port)
+		}
+		go client.Measure(host, chans[i])
 	}
 	fmt.Println(csvFormat)
 	return chans
