@@ -20,21 +20,29 @@ func main() {
 	flag.Parse()
 
 	server.StartServer(*port)
-
 	hosts := strings.Split(*hostArgument, ",")
+
+	chans  := startClients(hosts, *port)
+	measure(chans, *interval)
+}
+
+func startClients(hosts []string, port int) []chan int {
 	chans := make([]chan int, len(hosts))
 	csvFormat := "# timestamp"
 	for i, host := range hosts {
 		csvFormat += ", "
 		chans[i] = make(chan int)
 		csvFormat += host
-		address := fmt.Sprintf("%s:%d", host, *port)
+		address := fmt.Sprintf("%s:%d", host, port)
 		go client.Measure(address, chans[i])
 	}
 	fmt.Println(csvFormat)
+	return chans
+}
 
+func measure(chans []chan int, interval int) {
 	for {
-		time.Sleep(time.Duration(*interval) * time.Millisecond)
+		time.Sleep(time.Duration(interval) * time.Millisecond)
 		var csv string
 		sep := ""
 		for _, latChan := range chans {
